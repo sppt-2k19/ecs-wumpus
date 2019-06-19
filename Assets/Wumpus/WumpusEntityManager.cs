@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Threading;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -91,6 +94,7 @@ public class WumpusEntityManager : MonoBehaviour
     private static string comment;
     private CaveWorld world;
     public float YPosition = 1.0f;
+    private static StreamWriter LogFile;
     
     
     [Serializable]
@@ -99,21 +103,41 @@ public class WumpusEntityManager : MonoBehaviour
         public string Name;
         public AudioClip Sound;
     } 
-
-    public void SetAgentSystem(AgentSystem agentSystem)
+    
+    
+    public static void OpenLogFile(string filename)
     {
-        _system = agentSystem;
+        var curDir = Directory.GetCurrentDirectory();
+        UnityEngine.Debug.Log(curDir);
+        string fullPath;
+        if (Application.isEditor)
+            fullPath = $"{curDir}/{filename}";
+        else
+            fullPath = $"{curDir}/../{filename}";
+
+        if (File.Exists(fullPath))
+        {
+            UnityEngine.Debug.Log("Deleting old result file");
+            File.Delete(fullPath);
+        }
+
+        LogFile = new StreamWriter(fullPath);
     }
+
+    public static void CloseLogFile()
+    {
+        LogFile.Flush();
+        LogFile.Close();
+    }
+
 
     private void Awake()
     {
         EM = World.Active.EntityManager;
 
-//        CreateWorldPlatform(EM);
+        Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+        Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 
-//        MoveAgent(new Vector3(0,4,0));
-        
-        
         WumpusSounds = new Dictionary<string, AudioClip>();
         foreach (var pfb in SoundEffects)
         {
@@ -124,8 +148,8 @@ public class WumpusEntityManager : MonoBehaviour
 
     void Start () {
         mode = Application.isEditor ? "Editor" : "Release";
-//        OpenLogFile($"Wumpus Unity ({mode}).csv");
-        UnityEngine.Debug.Log("Iteration No.;Iterate time (microseconds);Comment");
+        OpenLogFile($"Wumpus Unity ({mode}).csv");
+        LogFile.WriteLine("Iteration No.,Iterate time (microseconds),Comment");
 
         world = new CaveWorld(WumpusPositions, PitPositions, GoldPosition);
         CreateWorldPlatform();
@@ -233,12 +257,17 @@ public class WumpusEntityManager : MonoBehaviour
             world.Iterate();
             UpdateTimer = 0f;
             t.Stop();
-            UnityEngine.Debug.Log($"{iterationNumber};{t.Elapsed.TotalMilliseconds * 1000};{comment}");
+            LogFile.WriteLine($"{iterationNumber},{t.Elapsed.TotalMilliseconds * 1000},{comment}");
             comment = "";
             iterationNumber++;
         }
         else
             UpdateTimer += Time.deltaTime;
+    }
+    
+    private void OnDestroy()
+    {
+        CloseLogFile();
     }
     
     private void CreateWorldPlatform()
