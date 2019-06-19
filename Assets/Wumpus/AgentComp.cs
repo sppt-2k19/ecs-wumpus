@@ -9,11 +9,10 @@ public struct AgentComp : IComponentData
 
     public int WorldHeight;
     public int WorldWidth;
-    public Dictionary<Position, Percepts> PerceptedPlaces;
-    public Dictionary<Position, Knowledge> KnowledgeOfPlaces;
 
     public bool FoundGold; //false
 
     public Position CurrentPosition; //(0,0)
-    public Stack<Position> Trace; // = new Stack<Position>();
+
+//    public Stack<Position> Trace; // = new Stack<Position>();
 }
